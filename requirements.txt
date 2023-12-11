@@ -1,0 +1,9 @@
+accelerate
+bitsandbytes
+gradio
+tokenizers
+torch
+torchaudio
+torchvision
+tqdm
+transformers

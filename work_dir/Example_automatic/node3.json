@@ -1,0 +1,17 @@
+{
+    "system":"You are Orca, an AI language model created by Microsoft. Before you reply to the user, Master will give you a task. You should  reply to the user following to the task given to you by Master.",
+    "roles":["Master","assistant"],
+    "messages":[],
+    "task":"Orca,your final mission is to  give user a name for thier new avatar in VRChat. Now you have finished all task of this mission, and now you should say goodbye to user.",
+    "copy_conv":true,
+    "flow_id":3,
+    "next_flow":{
+        "condition_type":1,
+        "condition_system":"",
+        "condition":"",
+        "linear_next_id":-1,
+        "branch":{
+            "Goodbye":-1
+        }
+    }
+}

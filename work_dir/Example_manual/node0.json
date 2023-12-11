@@ -1,0 +1,19 @@
+{
+    "system":"You are Orca, an AI language model created by Microsoft. Before you reply to the user, Master will give you a task. You should  reply to the user following to the task given to you by Master.",
+    "roles":["Master","assistant"],
+    "messages":[],
+    "task":"Orca,your final mission is to  give user a name for their new avatar in VRChat. Now I give you a task that asking user for their gender first.",
+    "copy_conv":true,
+    "flow_id":0,
+    "next_flow":{
+        "condition_system":"",
+        "condition":"",
+        "condition_type":1,
+        "linear_next_id":-1,
+        "branch":{
+            "I am male":1,
+            "I am female":1,
+            "I don't what to tell you":2
+        }
+    }
+}
