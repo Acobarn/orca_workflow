@@ -29,6 +29,7 @@
  ```
 
  **2. Prepare the LLM weights**
+
  Because of Orca2's excellent single-task reasoning ability and standardized final answer output format, I chose this model as the evaluation engine for automatic branching.
  Please download the llm weights.
 
@@ -43,13 +44,14 @@
  In the Demo's 'Chose a workflow for Orca2' module,you can found the author's pre-built auto-branching example and the manual branching example. It is a simple workflow that LLM collects some infomation from user ,then give user a name for thier avatar. 
 
  **4. Add your own workflow**
+ 
  Those examples locate on the ./work_dir directory. You can design your own workflow node by node, following the patterns and rules of the examples. This demo supports mixing multiple branching methods in one workflow.
 
 ## What is Orca2
  Orca 2 is a finetuned version of LLAMA-2 that created by Microsoft.Orca 2 is built for research purposes only and provides a single turn response in tasks such as reasoning over user given data, reading comprehension, math problem solving and text summarization. The model is designed to excel particularly in reasoning.
 
  More details and paper can be viewed on Microsoft's Hunggingface repository:
- 
+
  https://huggingface.co/microsoft/Orca-2-13b
 
 ## TODO
