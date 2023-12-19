@@ -70,6 +70,17 @@ class Conversation:
             sep2=self.sep2,
             sep3=self.sep3,
             conv_id=self.conv_id)
+    
+    def update_sep_style(self,
+                       sep_style:SeparatorStyle,
+                       sep:str = None,
+                       sep2:str = None,
+                       sep3:str = None
+                       ):
+        self.sep_style = sep_style
+        self.sep = sep
+        self.sep2 = sep2
+        self.sep3 = sep3
 
     def dict(self):
         return {

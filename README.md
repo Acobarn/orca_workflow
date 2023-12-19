@@ -22,6 +22,9 @@
 
 ## How to use it
  **1. Prepare the code and the environment**
+
+Install the cuda toolkits and cuDNN from NVIDIA Developer
+
  ```bash
  git clone https://github.com/Acobarn/orca_workflow.git
  cd orca_workflow
@@ -31,6 +34,7 @@
  **2. Prepare the LLM weights**
 
  Because of Orca2's excellent single-task reasoning ability and standardized final answer output format, I chose this model as the evaluation engine for automatic branching.
+ 
  Please download the llm weights.
 
  [Download](https://huggingface.co/microsoft/Orca-2-13b/tree/main)
@@ -41,7 +45,7 @@
  ```bash
  python ./orca_demo.py
  ```
- In the Demo's 'Chose a workflow for Orca2' module,you can found the author's pre-built auto-branching example and the manual branching example. It is a simple workflow that LLM collects some infomation from user ,then give user a name for thier avatar. 
+ In the Demo's 'Chose a workflow for Orca2' module,you can found the author's pre-built auto-branching example and the manual branching example. It is a simple workflow that LLM collects some infomation from user ,then give user a name for their avatar. 
 
  **4. Add your own workflow**
  

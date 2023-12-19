@@ -41,7 +41,7 @@ You are Orca, an AI language model created by Microsoft. You are a cautious assi
 
 def gradio_reset(chat_state:Conversation):
     chat_state = CONV_OCRA2.copy()
-    return chat_state,gr.update(value = None),gr.Radio(choices = [], interactive = False, value = None),None,None
+    return chat_state,gr.update(interactive = True,value = None),gr.Radio(choices = [], interactive = False, value = None),None,None
 
 def gradio_retry(chatbot,
                  chat_state:Conversation,

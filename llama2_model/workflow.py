@@ -2,6 +2,7 @@ import os
 import json
 from typing import List
 from llama2_model.conversation import Conversation,SeparatorStyle
+from llama2_model.call_funcation import CallFunction
 
 class WorkFlowConv(Conversation):
     flow_name: str
@@ -10,6 +11,8 @@ class WorkFlowConv(Conversation):
     front_flow_id: List[int] = []
     copy_conv: bool = True
     replied: bool = False
+    call_funcation: bool = False
+    function_list: dict[str,CallFunction] = []
     class next_flow:
         # condition_type: 0-automatic;1-manual;2-linear
         condition_type: int = 2
@@ -22,7 +25,7 @@ class WorkFlowConv(Conversation):
                      condition_system:str,
                      condition:str,
                      linear_next_id:int,
-                     branch:dict):
+                     branch:dict) -> None:
                 self.condition_type = condition_type
                 self.condition_system = condition_system
                 self.condition = condition
@@ -36,7 +39,9 @@ class WorkFlowConv(Conversation):
                  task:str,
                  flow_id:int,
                  copy_conv:int,
-                 next_flow:next_flow):
+                 call_funcation:bool,
+                 function_list:dict[str,CallFunction],
+                 next_flow:next_flow) -> None:
         self.system = system
         self.roles = roles
         self.messages = messages
@@ -48,6 +53,8 @@ class WorkFlowConv(Conversation):
         self.task = task
         self.flow_id = flow_id
         self.copy_conv = copy_conv
+        self.call_funcation = call_funcation
+        self.function_list = function_list
         self.next_flow = next_flow
         
     def __init_subclass__(cls) -> None:
@@ -58,17 +65,32 @@ class FlowChat():
     def __init__(self) -> None:
         pass
     
-    def custom_decoder(self,d):
+    def custom_decoder(self,d) -> WorkFlowConv:
         inner = WorkFlowConv.next_flow(condition_type=d["next_flow"]["condition_type"],
                                        condition_system=d["next_flow"]["condition_system"],
                                        condition=d["next_flow"]["condition"],
                                        linear_next_id=d["next_flow"]["linear_next_id"],
                                        branch=d["next_flow"]["branch"])
+        function_list : dict[int,CallFunction] = {}
+        if d["call_funcation"] == True:
+            for temp in d["function_list"]:
+                key_temp:str = str(temp["call_position"]) + str(temp["call_sequence"]).ljust(3,'0')
+                function_list[key_temp] = CallFunction(
+                    function_name = temp["function_name"],
+                    call_sequence = temp["call_sequence"],
+                    call_position = temp["call_position"],
+                    request_process= temp["request_process"],
+                    response_process = temp["response_process"],
+                    copy_conv = temp["copy_conv"],
+                    use_template_prompt = temp["use_template_prompt"],
+                    system = temp["system"],
+                )
+
         return WorkFlowConv(system=d["system"],roles=d["roles"],messages=d["messages"],
                             task=d["task"],flow_id=d["flow_id"],copy_conv=d["copy_conv"],
+                            call_funcation=d["call_funcation"],function_list=function_list,
                             next_flow=inner)
-
-    def get_workflow(self):
+    def get_workflow(self) -> List[str]:
         workflow_dir = './work_dir'
         flow_list = []
         for item in os.scandir(workflow_dir):
@@ -77,20 +99,20 @@ class FlowChat():
         print(flow_list)
         return flow_list
 
-    def get_flow_node(self,flow_name,node_id):
+    def get_flow_node(self,flow_name,node_id) -> str:
         flow_node_file = flow_name+'/node'+str(node_id)+'.json'
         with open(flow_node_file,'r',encoding='utf-8') as f:
             data = f.read()
         return data
 
-    def init_senario(self,senario):
+    def init_senario(self,senario) -> WorkFlowConv:
         jsonData = self.get_flow_node(flow_name = senario,node_id = 0)
         d = json.loads(jsonData.strip('\t\r\n'))
         woflco = self.custom_decoder(d = d)
         woflco.flow_name = senario
         return woflco
 
-    def get_front_node(self,workflow:WorkFlowConv):
+    def get_front_node(self,workflow:WorkFlowConv) -> WorkFlowConv:
         if len(workflow.front_flow_id) == 0:
             print('reach the head node')
             return workflow
@@ -104,7 +126,7 @@ class FlowChat():
         woflco.flow_name = workflow.flow_name
         return woflco
 
-    def get_next_node(self,workflow:WorkFlowConv,next_id):
+    def get_next_node(self,workflow:WorkFlowConv,next_id) -> WorkFlowConv:
         if next_id == -1:
             workflow.flow_id = -1
             print('workflow ends')
@@ -115,11 +137,12 @@ class FlowChat():
         jsonData = self.get_flow_node(flow_name=workflow.flow_name,node_id=next_id)
         d = json.loads(jsonData.strip('\t\r\n'))
         woflco = self.custom_decoder(d = d)
-        woflco.front_flow_id.append(workflow.flow_id)
+        workflow.front_flow_id.append(workflow.flow_id)
+        woflco.front_flow_id = workflow.front_flow_id
         woflco.flow_name = workflow.flow_name
         return woflco
     
-    def condition_check(self,workflow:WorkFlowConv,output_text):
+    def condition_check(self,workflow:WorkFlowConv,output_text) -> WorkFlowConv:
         if  len(workflow.next_flow.branch) != 0:
             for check in workflow.next_flow.branch:
                 if output_text.find(check) != -1:
