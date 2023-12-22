@@ -11,8 +11,9 @@ class WorkFlowConv(Conversation):
     front_flow_id: List[int] = []
     copy_conv: bool = True
     replied: bool = False
+    node_repeat: int = 0
     call_funcation: bool = False
-    function_list: dict[str,CallFunction] = []
+    function_list: dict[int,dict[int,CallFunction]] = {}
     class next_flow:
         # condition_type: 0-automatic;1-manual;2-linear
         condition_type: int = 2
@@ -39,6 +40,7 @@ class WorkFlowConv(Conversation):
                  task:str,
                  flow_id:int,
                  copy_conv:int,
+                 node_repeat:int,
                  call_funcation:bool,
                  function_list:dict[str,CallFunction],
                  next_flow:next_flow) -> None:
@@ -53,6 +55,7 @@ class WorkFlowConv(Conversation):
         self.task = task
         self.flow_id = flow_id
         self.copy_conv = copy_conv
+        self.node_repeat = node_repeat
         self.call_funcation = call_funcation
         self.function_list = function_list
         self.next_flow = next_flow
@@ -71,11 +74,20 @@ class FlowChat():
                                        condition=d["next_flow"]["condition"],
                                        linear_next_id=d["next_flow"]["linear_next_id"],
                                        branch=d["next_flow"]["branch"])
-        function_list : dict[int,CallFunction] = {}
-        if d["call_funcation"] == True:
+        function_list:dict[int,dict[int,CallFunction]] = {}
+        if "call_funcation" in d.keys():
+            dict0:dict[int,CallFunction] = {}
+            dict1:dict[int,CallFunction] = {} 
+            dict2:dict[int,CallFunction] = {} 
+            dict3:dict[int,CallFunction] = {} 
+            dict4:dict[int,CallFunction] = {} 
+            dict5:dict[int,CallFunction] = {}
+            function_list = {0:dict0,1:dict1,2:dict2,
+                             3:dict3,4:dict4,5:dict5} 
             for temp in d["function_list"]:
-                key_temp:str = str(temp["call_position"]) + str(temp["call_sequence"]).ljust(3,'0')
-                function_list[key_temp] = CallFunction(
+                key_x:int = temp["call_position"]
+                key_y:int = temp["call_sequence"]
+                function_list[key_x][key_y] = CallFunction(
                     function_name = temp["function_name"],
                     call_sequence = temp["call_sequence"],
                     call_position = temp["call_position"],
@@ -85,11 +97,21 @@ class FlowChat():
                     use_template_prompt = temp["use_template_prompt"],
                     system = temp["system"],
                 )
+            sorted(dict0.keys())
+            sorted(dict1.keys())
+            sorted(dict2.keys())
+            sorted(dict3.keys())
+            sorted(dict4.keys())
+            sorted(dict5.keys())
+        else: d["call_funcation"] = False
+        repeat = 0
+        if "node_repeat" in d.keys():
+            repeat = d["node_repeat"]
 
         return WorkFlowConv(system=d["system"],roles=d["roles"],messages=d["messages"],
                             task=d["task"],flow_id=d["flow_id"],copy_conv=d["copy_conv"],
-                            call_funcation=d["call_funcation"],function_list=function_list,
-                            next_flow=inner)
+                            node_repeat=repeat,call_funcation=d["call_funcation"],
+                            function_list=function_list,next_flow=inner)
     def get_workflow(self) -> List[str]:
         workflow_dir = './work_dir'
         flow_list = []
@@ -152,4 +174,3 @@ class FlowChat():
             print("can not find branch!")
             workflow.replied = False
         return workflow
-        

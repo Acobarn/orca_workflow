@@ -99,8 +99,12 @@ class WorkflowLLAMA2:
         conv.append_message(workflow.roles[1], None)
         if workflow.replied == False:
             workflow.replied = True
+            # before generation
+            # self.call_function_by_position(workflow = workflow, position = 0)
             return self.stream_answer(workflow, **kargs),workflow
-        elif workflow.next_flow.condition_type == 1:
+        # after user reply
+        # self.call_function_by_position(workflow = workflow,position = 3)
+        if workflow.next_flow.condition_type == 1:
             # manual node
             # pop conv.append_message(workflow.roles[1], None)
             conv.messages.pop()
@@ -109,12 +113,14 @@ class WorkflowLLAMA2:
             next_flow_id = workflow.next_flow.branch[user_choice]
             workflow = flowChat.get_next_node(workflow,next_flow_id)
             return self.workflow_stream_answer(conv, workflow, flow_name, **kargs)[0],workflow
-        elif workflow.next_flow.condition_type == 2:
+        if workflow.next_flow.condition_type == 2:
             # linear node
             # pop conv.append_message(workflow.roles[1], None)
             conv.messages.pop()
             workflow = flowChat.get_next_node(workflow,workflow.next_flow.linear_next_id)
             return self.workflow_stream_answer(conv, workflow, flow_name, **kargs)[0],workflow
+        # before branching
+        # self.call_function_by_position(workflow = workflow, position = 4)
         # automatic node
         return self.answer_check(conv,flowChat,workflow, **kargs)
     
@@ -135,7 +141,11 @@ class WorkflowLLAMA2:
             return None, workflow
         return self.stream_answer(workflow, **kargs),workflow
     
-    def answer_in_stream(self, conv, workflow, flow_name, **kargs):
+    def answer_in_stream(self, 
+                         conv:Conversation, 
+                         workflow:WorkFlowConv, 
+                         flow_name, 
+                         **kargs):
         if flow_name is None:
             return self.stream_answer(conv, **kargs),None
         else:
@@ -158,6 +168,11 @@ class WorkflowLLAMA2:
         # end of workflow
         if workflow.flow_id == -1:
             return workflow
+        
+        # repeat current node
+        if workflow.replied == True and workflow.node_repeat != 0:
+            workflow.node_repeat -= 1
+            workflow.replied = False
 
         # deal linear node and manual node
         if workflow.replied == True and workflow.next_flow.condition_type != 0 :
@@ -188,7 +203,13 @@ class WorkflowLLAMA2:
             workflow.messages.append(temp.messages[-1])
             workflow.messages.append(temp_user_reply)
         return workflow
-    
+            
+    def call_function_by_position(self,workflow:WorkFlowConv, position:int = 0):
+        function_tmp = workflow.function_list[position]
+        for value in function_tmp.values():
+            pass
+        pass
+
     def model_generate(self, *args, **kwargs):
         # for 8 bit and 16 bit compatibility
         output = self.model.generate(*args, **kwargs)
