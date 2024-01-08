@@ -4,11 +4,21 @@ import re
 
 class WebCrawler():
 
-    TEMPLATE_PROMPT:str = "Based on user's inputs , determine whether the assistant needs to obtain more information through online web crawlers or not."
-    " Options: Yes or No. If Yes, summarizes the query keywords in the following format."
-    " <keywords>the keywords for web crawlers </keywords>"
-    " After that, system will return the information obtained on the searching."
-    " Please complete the answer to the user based on those information."
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": { "prompt": ("list[str]",)}}
+    
+    RETURN_TYPES = {"response":{"prompt":("str")}}
+
+    FUNCTION = "crawler"
+
+    TEMPLATE_PROMPT:str = """Based on user's inputs, 
+     summarizes the query keywords in the following format,
+     <keywords>the keywords for web crawlers </keywords>
+     to obtain more information through online web crawlers.
+     For example: <keywords> Nvidia RTX Graghic Card</keywords>
+     After that, system will return the information obtained on the searching.
+     Please complete the answer to the user based on those information."""
 
     EXTRA_STOP_TOKEN:str = "</keywords>"
 
@@ -42,7 +52,12 @@ class WebCrawler():
         self.headers = headers
         self.proxies = proxies
 
-    def crawler(self,search_query,count = 4) -> list[dict]:
+    def crawler(self,prompt:list[str],count = 4) -> dict:
+        if len(prompt) == 0:
+            return {"prompt":"no search result"} 
+        search_query:str = prompt.pop()
+        for tmp in reversed(prompt):
+            search_query =  tmp + '+' + search_query     
         try:
             url = self.search_engine.format(search_query)
             res = self.session.get(url, headers=self.headers, proxies=self.proxies)
@@ -51,6 +66,9 @@ class WebCrawler():
             title = self.title_pattern.findall(r)
             brief = self.brief_pattern.findall(r)
             link = self.link_pattern.findall(r)
+
+            if len(title) == 0:
+                return self.crawler(prompt=prompt)
 
             clear_brief = []
             for i in brief:
@@ -65,10 +83,11 @@ class WebCrawler():
                 tmp2 = re.sub('<[^<]+?>', '', tmp).replace('\n', '').strip()
                 clear_title.append(tmp2)
 
-            return [{'title': "["+clear_title[i]+"]("+link[i][1]+")", 'content':clear_brief[i]}
+            res =  [{'title': "["+clear_title[i]+"]("+link[i][1]+")", 'content':clear_brief[i]}
                     for i in range(min(count, len(brief)))]
+            return {"prompt":str(res)}
         except:
-            return []
+            return {"prompt":"no search result"}
     
     def get_detail(self,site:str) -> dict:
         result:dict = {}
@@ -97,6 +116,6 @@ class WebCrawler():
         except:
             return result
 
-tmp = WebCrawler(search_engine="https://github.com/search?q={}")
-
-print(tmp.crawler("new bing copilot"))
+FUNCTION_CLASS_MAPPINGS = {
+    "WEBCRAWLER" : WebCrawler
+}

@@ -8,10 +8,12 @@ class CallFunction():
     # 4-before banching;5-after banching.
     call_position: int = 0
     # 0-do nothing
-    # 1-data fill
+    # 1-data fill and inner task
+    # 2-receive data from the previous function
     request_process: int = 0
     # 0-do nothing
     # 1-data backfill
+    # 2-send data to the next function
     response_process: int = 0
     copy_conv: bool = False
     use_template_prompt: bool = True
@@ -48,4 +50,7 @@ class Function_Enum(Enum):
     STANDARDHTTP = "STANDARDHTTP"
     LOCALLIB = "LOCALLIB"
     GETTIME = "GETTIME"
-    
+    ENCRYPT = "ENCRYPT"
+    DECRYPT = "DECRYPT"
+    LOADDIALOGUE = "LOADDIALOGUE"
+    SAVEDIALOGUR = "SAVEDIALOGUE"

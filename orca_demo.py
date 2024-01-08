@@ -23,10 +23,7 @@ model_id = "./orca2_weight"
 model = transformers.AutoModelForCausalLM.from_pretrained(model_id, device_map="auto", load_in_8bit=True)
 tokenizer = transformers.AutoTokenizer.from_pretrained(model_id, use_fast=False)
 
-stop_words_ids = [[32001],[32002], [32001,32002]]
-stop_words_ids = [torch.tensor(ids).to(device='cuda:0') for ids in stop_words_ids]
-stopping_criteria = StoppingCriteriaList([StoppingCriteriaSub(stops=stop_words_ids)])
-chat = WorkflowLLAMA2(model, tokenizer, device='cuda:0', stopping_criteria=stopping_criteria)
+chat = WorkflowLLAMA2(model, tokenizer, device='cuda:0')
 flowChat = FlowChat()
 flow_list = flowChat.get_workflow()
 DESCRIPTION = """
@@ -72,6 +69,8 @@ def gradio_undo(chatbot,
 
 def gradio_change_role(user_role_input,
                        chat_state:Conversation):
+    if chat_state is None:
+        chat_state = CONV_OCRA2.copy()
     roles_temp = list(chat_state.roles)
     roles_temp[0] = user_role_input
     chat_state.roles = tuple(roles_temp)
@@ -104,12 +103,6 @@ def gradio_answer(chatbot,
     streamer,workflow = chat.answer_in_stream(**answer_kwargs,
                                     workflow = workflow,
                                     flow_name = flow_name)
-    if streamer is None:
-        chatbot[-1][1] = chat_state.roles[1] + ': workflow ends. Please restart chat'
-        chat_state = CONV_OCRA2.copy()
-        yield chatbot, chat_state, workflow
-        return chatbot, chat_state, workflow
-    
     output = ''
     for new_output in streamer:
         output += new_output

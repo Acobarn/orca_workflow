@@ -1,5 +1,6 @@
 # This is a simple calculator demo
 from enum import Enum
+
 class Trigo_Function(Enum):
     SIN = "sin("
     COS = "cos("
@@ -62,19 +63,27 @@ class Non_Metric_Units_Conversion(Enum):
 
 class Calculator():
 
-    TEMPLATE_PROMPT:str = "Assistant,you can call calculator function in the following format. "
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": { "prompt": ("list[str]",)}}
+    
+    RETURN_TYPES = {"response":{"prompt":("str")}}
+
+    FUNCTION = "notation_traversal"
+
     # TODO Add call method in format to support more handling of formulas.
-    "<calculator><equation>x=arcsin(1/2)</equation></calculator>. "
-    "This function helps you to compute one-dimensional equations and simplify formulas.\n"
-    "For example :\n"
-    "\"user:I have a 25 hectares of farmland and this year I plan to plant corn. The yield of this variety of corn is 2.2 tonnes per acre. Due to technical problems, 57% of my farm is effectively planted. What is the expected corn harvest from my farmland this year?\"",
-    "\"assistant:To calculate the expected corn harvest from your farmland this year, you need to follow these steps:\n\""
-    "Find the total area of your farmland. Since you have 25 hectares, "
-    "you can use this conversion factor: 1 hectare = 2.47105 acres. So, 25 hectares = <calculator><equation>25 * 2.47105</equation></calculator> = 61.780875 acres.\n"
-    "Find the area of your farm that is effectively planted. Since 57% of your farm is planted, you can multiply the total area by 0.57. So, <calculator><equation>61.780875 * 0.57</equation></calculator> = 35.1932625 acres.\n"
-    "Find the expected yield per  acre of your corn variety. You have 2.2 tonnes per acre.\n"
-    "Multiply the yield per acre by the area that is effectively planted. So, <calculator><equation>35.1932625 * 2.2</equation></calculator> = 77.4166875 tonnes.\n"
-    "Therefore, the expected corn harvest from your farmland this year is about 77.4166875 tonnes."
+    TEMPLATE_PROMPT:str = """Assistant,you can call calculator function in the following format. 
+    <calculator><equation>x=arcsin(1/2)</equation></calculator>. 
+    This function helps you to compute one-dimensional equations and simplify formulas.\n
+    For example :\n
+    \"user:I have a 25 hectares of farmland and this year I plan to plant corn. The yield of this variety of corn is 2.2 tonnes per acre. Due to technical problems, 57% of my farm is effectively planted. What is the expected corn harvest from my farmland this year?\"
+    \"assistant:To calculate the expected corn harvest from your farmland this year, you need to follow these steps:\n
+    Find the total area of your farmland. Since you have 25 hectares,
+    you can use this conversion factor: 1 hectare = 2.47105 acres. So, 25 hectares = <calculator><equation>25 * 2.47105</equation></calculator> = 61.780875 acres.\n
+    Find the area of your farm that is effectively planted. Since 57% of your farm is planted, you can multiply the total area by 0.57. So, <calculator><equation>61.780875 * 0.57</equation></calculator> = 35.1932625 acres.\n
+    Find the expected yield per  acre of your corn variety. You have 2.2 tonnes per acre.\n
+    Multiply the yield per acre by the area that is effectively planted. So, <calculator><equation>35.1932625 * 2.2</equation></calculator> = 77.4166875 tonnes.\n
+    Therefore, the expected corn harvest from your farmland this year is about 77.4166875 tonnes.\""""
 
     # Add a stop token, when llm generates this token, it will interrupt the generation,
     # get the formula in the specified format, complete the simplification and calculation,
@@ -87,7 +96,7 @@ class Calculator():
         pass
 
     # Convert token to list[str] as input parameter
-    def notation_traversal(self,formula:list[str]) -> str:
+    def notation_traversal(self,formula:list[str]) -> dict:
         formula_stack:list[str] = []
         for i in formula:
             if i == Bracket.R_BRACKET.value:
@@ -102,10 +111,14 @@ class Calculator():
                 formula_stack.append(result)
             else:
                 formula_stack.append(i)
-        return self.compute(formula_stack)
+        return {"prompt":str(self.compute(formula_stack))}
 
     # TODO Support more calculation symbols
     def compute(self,str_list:list[str]) -> str:
         compute_str:str = ''.join(str_list)
         result = eval(compute_str)
         return str(result)
+    
+FUNCTION_CLASS_MAPPINGS = {
+    "CALCULATOR" : Calculator
+}

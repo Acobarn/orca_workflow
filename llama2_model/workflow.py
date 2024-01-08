@@ -1,5 +1,6 @@
 import os
 import json
+import time
 from typing import List
 from llama2_model.conversation import Conversation,SeparatorStyle
 from llama2_model.call_funcation import CallFunction
@@ -96,6 +97,7 @@ class FlowChat():
                     copy_conv = temp["copy_conv"],
                     use_template_prompt = temp["use_template_prompt"],
                     system = temp["system"],
+                    task = temp["task"],
                 )
             sorted(dict0.keys())
             sorted(dict1.keys())
@@ -152,6 +154,7 @@ class FlowChat():
         if next_id == -1:
             workflow.flow_id = -1
             print('workflow ends')
+            self.save_conv(workflow=workflow)
             return workflow 
         if next_id == workflow.flow_id:
             workflow.front_flow_id.append(workflow.flow_id)
@@ -174,3 +177,17 @@ class FlowChat():
             print("can not find branch!")
             workflow.replied = False
         return workflow
+    
+    def save_conv(self,workflow:WorkFlowConv) -> None:
+        t = int(round(time.time() * 1000))
+        date = time.strftime('%Y-%m-%d',time.localtime(t/1000))
+        his_dir = './his_dir/'
+        if not os.path.exists(his_dir+date):
+            os.makedirs(his_dir+date)
+        file_name = his_dir + date + '/' + str(t) + '.txt'     
+        res = '(flow_name = {},messages = {},front_flow_id = {})'.format(workflow.flow_name.split('./work_dir')[-1].strip(),
+                                                                   workflow.messages,
+                                                                   workflow.front_flow_id)    
+        f = open(file=file_name,mode='w')
+        f.write(res)
+        f.close()
