@@ -3,9 +3,8 @@ import sys
 import gradio as gr
 import torch
 import transformers
-from transformers import StoppingCriteriaList
 from llama2_model.conversation import CONV_OCRA2,Conversation
-from llama2_model.workflowllama2 import StoppingCriteriaSub,WorkflowLLAMA2
+from llama2_model.workflowllama2 import WorkflowLLAMA2
 from llama2_model.workflow import FlowChat,WorkFlowConv
 
 if not torch.cuda.is_available():
@@ -105,7 +104,7 @@ def gradio_answer(chatbot,
                                     flow_name = flow_name)
     output = ''
     for new_output in streamer:
-        output += new_output
+        output = new_output
         chatbot[-1][1] = chat_state.roles[1] + ': ' + output
         yield chatbot, chat_state, workflow
     chat_state.messages[-1][1] = output.split(chat_state.sep)[0]

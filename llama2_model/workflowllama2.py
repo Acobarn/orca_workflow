@@ -60,24 +60,15 @@ class WorkflowLLAMA2:
         index = 0
         while index < length:
             temp = self.stopping_criteria[0].stops.pop()
+            index += 1
             if torch.all(temp == stop_words_ids).item():
                 continue
             self.stopping_criteria[0].stops.append(temp)
-            index += 1
 
     def answer_prepare(self,conv:Conversation, max_new_tokens=512, num_beams=1, min_length=1, top_p=0.9,
                        repetition_penalty=1.05, length_penalty=1, temperature=0.6, max_length=2000):
         conv.append_message(conv.roles[1], None)
-        prompt = conv.get_prompt()
-
-        input_ids = self.tokenizer(prompt, return_tensors='pt').input_ids
-        current_max_len = input_ids.shape[1] + max_new_tokens
-        if current_max_len - max_length > 0:
-            print('Warning: The number of tokens in current conversation exceeds the max length. '
-                  'The model will not see the contexts outside the range.')
-        begin_idx = max(0, current_max_len - max_length)
-        input_ids = input_ids[:, begin_idx:]
-        input_ids = input_ids.to(self.device)
+        input_ids = self.promt_to_token(conv=conv,max_new_tokens=max_new_tokens,max_length=max_length)
 
         generation_kwargs = dict(
             {"input_ids":input_ids},
@@ -92,6 +83,20 @@ class WorkflowLLAMA2:
             temperature=float(temperature),
         )
         return generation_kwargs
+    
+    def promt_to_token(self,conv:Conversation,max_new_tokens = 512,max_length = 2000):
+        prompt = conv.get_prompt()
+
+        input_ids = self.tokenizer(prompt, return_tensors='pt').input_ids
+        current_max_len = input_ids.shape[1] + max_new_tokens
+        if current_max_len - max_length > 0:
+            print('Warning: The number of tokens in current conversation exceeds the max length. '
+                  'The model will not see the contexts outside the range.')
+        begin_idx = max(0, current_max_len - max_length)
+        input_ids = input_ids[:, begin_idx:]
+        input_ids = input_ids.to(self.device)
+
+        return input_ids
 
     def answer(self,
                conv:Conversation,
@@ -113,7 +118,48 @@ class WorkflowLLAMA2:
         generation_kwargs['streamer'] = streamer
         thread = Thread(target=self.model_generate, kwargs=generation_kwargs)
         thread.start()
-        return streamer
+        for new_output in streamer:
+            yield new_output
+        return new_output
+    
+    def interpolate_stream_answer(self,
+                                    workflow:WorkFlowConv,
+                                    function:CallFunction,
+                                    **kargs):
+        check_text = ''
+        function_inputs = []
+        obj_class = self.function_executor.FUNCTION_CLASS_MAPPINGS[function.function_name]
+        self.add_extra_stop_token(obj_class.EXTRA_STOP_TOKEN)
+
+        generation_kwargs = self.answer_prepare(workflow,  **kargs)
+        streamer = TextIteratorStreamer(self.tokenizer,skip_prompt=True,skip_special_tokens=True)
+        generation_kwargs['streamer'] = streamer
+        thread = Thread(target=self.model_generate, kwargs=generation_kwargs)
+        thread.start()
+        for new_output in streamer:
+            check_text += new_output
+            yield new_output
+        # Execute the function and replace the output of the model as new prompt
+        while check_text[-len(obj_class.EXTRA_STOP_TOKEN)] == obj_class.EXTRA_STOP_TOKEN:
+            # pop conv.append_message(conv.roles[1], None) 
+            workflow.messages.pop()
+
+            param = check_text.split(obj_class.START_TOKEN)[-1].strip()
+            param = param.split(obj_class.EXTRA_STOP_TOKEN)[-1].strip()
+            prompt_list = self.tokenizer.tokenize(param)
+            function_inputs['prompt'] = prompt_list
+            res = self.function_executor.execute_function(inputs=function_inputs,function_name=function.function_name)
+
+            workflow.append_message(workflow.roles[1],check_text+res['prompt'])
+            input_ids = self.promt_to_token(conv=workflow)
+            generation_kwargs['input_ids'] = input_ids
+            thread = Thread(target=self.model_generate, kwargs=generation_kwargs)
+            thread.start()
+            for new_output in streamer:
+                check_text += new_output
+                yield new_output
+        self.pop_extra_stop_token(obj_class.EXTRA_STOP_TOKEN)
+        return new_output
     
     def workflow_stream_answer(self,
                                conv:Conversation,
@@ -132,7 +178,7 @@ class WorkflowLLAMA2:
             self.call_function_by_position(conv = conv, workflow = workflow, position = 1)
             return self.stream_answer(workflow, **kargs),workflow
         # after user reply
-        # self.call_function_by_position(workflow = workflow,position = 3)
+        self.call_function_by_position(conv = conv,workflow = workflow,position = 3)
         if workflow.next_flow.condition_type == 1:
             # manual node
             # pop conv.append_message(workflow.roles[1], None)
@@ -149,7 +195,7 @@ class WorkflowLLAMA2:
             workflow = flowChat.get_next_node(workflow,workflow.next_flow.linear_next_id)
             return self.workflow_stream_answer(conv, workflow, flow_name, **kargs)[0],workflow
         # before branching
-        # self.call_function_by_position(workflow = workflow, position = 4)
+        self.call_function_by_position(conv = conv,workflow = workflow, position = 4)
         # automatic node
         return self.answer_check(conv,flowChat,workflow, **kargs)
     
@@ -242,7 +288,7 @@ class WorkflowLLAMA2:
                                   position:int = 0):
         if len(workflow.function_list) == 0:
             return conv, workflow
-        function_tmp:CallFunction = workflow.function_list[position]
+        function_tmp:dict[int,CallFunction] = workflow.function_list[position]
         received_data:str = ''
         for value in function_tmp.values():
             conv, workflow ,received_data = self.call_function(conv = conv, workflow = workflow, function = value, received_data = received_data)
