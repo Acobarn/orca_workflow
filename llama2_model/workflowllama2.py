@@ -299,9 +299,9 @@ class WorkflowLLAMA2:
                       workflow:WorkFlowConv,
                       function:CallFunction,
                       received_data:dict):
-        send_data:dict = []
+        send_data:dict = {}
         
-        inputs:dict = []
+        inputs:dict = {}
 
         # 1-inner task to fill data
         if function.request_process == 1:
@@ -315,7 +315,7 @@ class WorkflowLLAMA2:
             self.pop_extra_stop_token(obj_class.EXTRA_STOP_TOKEN)
             if res.find(obj_class.START_TOKEN) != -1 and res.find(obj_class.EXTRA_STOP_TOKEN) != -1:
                 res = res.split(obj_class.START_TOKEN)[-1].strip()
-                res = res.split(obj_class.EXTRA_STOP_TOKEN)[-1].strip()
+                res = res.split(obj_class.EXTRA_STOP_TOKEN)[0].strip()
                 prompt_list = self.tokenizer.tokenize(res)
                 inputs["prompt"] = prompt_list
             else:

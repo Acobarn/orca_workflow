@@ -104,7 +104,7 @@ def gradio_answer(chatbot,
                                     flow_name = flow_name)
     output = ''
     for new_output in streamer:
-        output = new_output
+        output += new_output
         chatbot[-1][1] = chat_state.roles[1] + ': ' + output
         yield chatbot, chat_state, workflow
     chat_state.messages[-1][1] = output.split(chat_state.sep)[0]
